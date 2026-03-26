@@ -1,10 +1,149 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Guest List</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guest List</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f4f6f8; }
+    h2 { text-align: center; }
+    table { width: 100%; border-collapse: collapse; background: white; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+    th { background: #007bff; color: white; }
+    input[type="text"] { padding: 8px; margin: 5px; width: 200px; }
+    button { padding: 8px 12px; color: white; border: none; cursor: pointer; border-radius: 4px; margin: 5px; }
+    .add-btn { background: #28a745; }
+    .export-btn { background: #17a2b8; }
+    .import-btn { background: #ffc107; color: black; }
+    .form-container { margin-bottom: 20px; text-align: center; }
+    .summary { margin: 15px 0; padding: 10px; background: #ffffff; border: 1px solid #ddd; display: flex; justify-content: space-around; font-weight: bold; }
+  </style>
 </head>
 <body>
-    <h1>Welcome to the Guest List</h1>
-    <!-- Your content goes here -->
+
+  <h2>Wedding Guest List</h2>
+
+  <div class="form-container">
+    <input type="text" id="name" placeholder="Guest Name" />
+    <input type="text" id="stay" placeholder="Stay Details" />
+    <button class="add-btn" onclick="addGuest()">Add Guest</button>
+    <button class="export-btn" onclick="exportData()">Export</button>
+    <input type="file" id="fileInput" style="display:none" onchange="importData(event)" />
+    <button class="import-btn" onclick="document.getElementById('fileInput').click()">Import</button>
+  </div>
+
+  <div class="summary">
+    <div>Total Guests: <span id="total">0</span></div>
+    <div>Drinks Alcohol: <span id="drinks">0</span></div>
+    <div>Contacted: <span id="contacted">0</span></div>
+    <div>Card Sent: <span id="cardsent">0</span></div>
+  </div>
+
+  <table id="guestTable">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Stay</th>
+        <th>Drinks Alcohol</th>
+        <th>Contacted</th>
+        <th>Card Sent</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    const STORAGE_KEY = 'guestListData';
+
+    function saveData() {
+      const rows = [];
+      document.querySelectorAll('#guestTable tbody tr').forEach(row => {
+        rows.push({
+          name: row.cells[0].innerText,
+          stay: row.cells[1].innerText,
+          drinks: row.cells[2].firstChild.checked,
+          contacted: row.cells[3].firstChild.checked,
+          cardsent: row.cells[4].firstChild.checked
+        });
+      });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
+    }
+
+    function loadData() {
+      const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      data.forEach(addGuestToTable);
+      updateSummary();
+    }
+
+    function addGuest() {
+      const name = document.getElementById('name').value.trim();
+      const stay = document.getElementById('stay').value.trim();
+      if (!name) return alert('Enter guest name');
+
+      addGuestToTable({ name, stay, drinks: false, contacted: false, cardsent: false });
+      document.getElementById('name').value = '';
+      document.getElementById('stay').value = '';
+      saveData(); updateSummary();
+    }
+
+    function addGuestToTable(guest) {
+      const row = document.querySelector('#guestTable tbody').insertRow();
+      row.insertCell(0).innerText = guest.name;
+      row.insertCell(1).innerText = guest.stay;
+
+      ['drinks','contacted','cardsent'].forEach((key, i) => {
+        const cell = row.insertCell(i+2);
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = guest[key];
+        cb.onchange = () => { saveData(); updateSummary(); };
+        cell.appendChild(cb);
+      });
+    }
+
+    function updateSummary() {
+      let total=0, drinks=0, contacted=0, cardsent=0;
+      document.querySelectorAll('#guestTable tbody tr').forEach(row => {
+        total++;
+        if (row.cells[2].firstChild.checked) drinks++;
+        if (row.cells[3].firstChild.checked) contacted++;
+        if (row.cells[4].firstChild.checked) cardsent++;
+      });
+      totalEl.innerText = total;
+      drinksEl.innerText = drinks;
+      contactedEl.innerText = contacted;
+      cardsentEl.innerText = cardsent;
+    }
+
+    const totalEl = document.getElementById('total');
+    const drinksEl = document.getElementById('drinks');
+    const contactedEl = document.getElementById('contacted');
+    const cardsentEl = document.getElementById('cardsent');
+
+    function exportData() {
+      const data = localStorage.getItem(STORAGE_KEY);
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'guest-list-data.json';
+      a.click();
+    }
+
+    function importData(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        localStorage.setItem(STORAGE_KEY, e.target.result);
+        location.reload();
+      };
+      reader.readAsText(file);
+    }
+
+    window.onload = loadData;
+  </script>
+
 </body>
 </html>
